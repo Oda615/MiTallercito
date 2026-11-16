@@ -179,7 +179,7 @@ To update later, run `update` in the container console.
 `tools/mitallercito-lxc.sh` does not depend on community-scripts. It is attached to every release as `mitallercito-lxc.sh`:
 
 ```bash
-bash mitallercito-lxc.sh --file mitallercito-0.9.0.mtc          # no internet needed for the app
+bash mitallercito-lxc.sh --file mitallercito-1.0.0.mtc          # no internet needed for the app
 MT_NONINTERACTIVE=1 CTID=120 IPCFG=192.168.1.50/24,gw=192.168.1.1 VLAN=20 bash mitallercito-lxc.sh
 bash mitallercito-lxc.sh --help
 ```
@@ -319,40 +319,18 @@ Componentes y ferretería (muelles, tornillos, insertos, imanes…) con stock y 
 Ingresos al cobrar, gastos, quién ha pagado qué (para ir a medias entre socios), exportación CSV. **Gastos fijos** (cuota de autónomo, dominio, alquiler…) que se apuntan solos cada mes, trimestre o año. **Extracto mensual** con kWh y € de luz, material, horas de máquina y de mano de obra, IVA y beneficio.
 
 </td>
+</tr>
+<tr>
 <td valign="top">
 
 #### 🧵 Almacén de bobinas
 Cada bobina con material, marca, color y peso, dada de alta en un solo paso (el material nuevo se crea a la vez) o **pegando el enlace o el título de Amazon**. Se descuenta sola al imprimir; para afinar, la pesas. Al gastarla apuntas lo que pesa vacía y se aprende **la tara de cada marca**. Ves de un vistazo los colores que tienes y si **un modelo multicolor se puede imprimir** con lo que hay. **Lista de la compra** sacada de la previsión, con proveedores e **historial de precios** de cada material.
 
 </td>
-</tr>
-<tr>
 <td valign="top">
 
 #### 🖨️ Impresoras: Klipper, OctoPrint, PrusaLink
 Cualquier impresora con Moonraker (Klipper), OctoPrint o PrusaLink, cada una con su IP: estado en vivo, hora a la que termina, historial con **tiempo y filamento reales** asignado a cada pedido, y enviar G-code desde el pedido. Si están en otra red, con el **puente** (sin VPN).
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-#### 🔐 Hecho para dejarlo en internet
-Usuarios con roles, límite de intentos de login, cookies seguras detrás de proxy, primer arranque protegido y **actualizaciones firmadas** (Ed25519) aplicadas por un servicio aparte. La web nunca corre como root.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-#### 📲 Avisos por Telegram
-Estados de pedido (recibido, programado, imprimiendo, postprocesado, listo…) y un bot que avisa de pedidos nuevos, entregas cerca, stock bajo y **pedidos que llevan demasiado en un estado** (límite por estado).
-
-</td>
-<td valign="top">
-
-#### 🧩 Conjuntos y fallos
-**Conjuntos** de catálogo que agrupan piezas, material extra (muelles, tornillos…), instrucciones y todos los archivos en un .zip. Botón **Fallo**: dices a qué % se paró y se resta el material y el coste perdidos.
 
 </td>
 </tr>
@@ -367,6 +345,28 @@ Mercadillos, ferias, quedadas: tocas los productos, eliges efectivo, tarjeta o B
 
 #### 👥 Clientes y mantenimiento
 **Fichas de cliente** con historial, lo que ha gastado y lo que debe, y «repetir el último». **Mantenimiento** de cada impresora por horas, impresiones o días, con perfiles de los fabricantes (Bambu, Prusa, Creality, Snapmaker, Anycubic, Elegoo, resina): cuenta las horas con Moonraker o con los pedidos y fallos, y avisa por Telegram.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+#### 🧩 Conjuntos y fallos
+**Conjuntos** de catálogo que agrupan piezas, material extra (muelles, tornillos…), instrucciones y todos los archivos en un .zip. Botón **Fallo**: dices a qué % se paró y se resta el material y el coste perdidos.
+
+</td>
+<td valign="top">
+
+#### 📲 Avisos por Telegram
+Estados de pedido (recibido, programado, imprimiendo, postprocesado, listo…) y un bot que avisa de pedidos nuevos, entregas cerca, stock bajo y **pedidos que llevan demasiado en un estado** (límite por estado).
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+#### 🔐 Hecho para dejarlo en internet
+Usuarios con roles, límite de intentos de login, cookies seguras detrás de proxy, primer arranque protegido y **actualizaciones firmadas** (Ed25519) aplicadas por un servicio aparte. La web nunca corre como root.
 
 </td>
 </tr>
@@ -418,7 +418,7 @@ Para actualizar después, escribe `update` en la consola del contenedor.
 `tools/mitallercito-lxc.sh` no depende de community-scripts. Va adjunto a cada versión como `mitallercito-lxc.sh`:
 
 ```bash
-bash mitallercito-lxc.sh --file mitallercito-0.9.0.mtc          # la app no necesita internet
+bash mitallercito-lxc.sh --file mitallercito-1.0.0.mtc          # la app no necesita internet
 MT_NONINTERACTIVE=1 CTID=120 IPCFG=192.168.1.50/24,gw=192.168.1.1 VLAN=20 bash mitallercito-lxc.sh
 bash mitallercito-lxc.sh --help
 ```
