@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Sin publicar]
+## [1.0.1]
 - **Pedidos: descripción libre por línea.** Cada línea tiene «Producto» (se autocompleta con el catálogo y, al elegir uno, coge su precio y su coste) y debajo una descripción libre de varias líneas para lo que quieras (colores, grabados, entrega…). Sale en el presupuesto y el albarán respetando los saltos de línea, se copia al repetir el pedido y no cambia la descripción del producto en el catálogo.
 - Instalador: rótulo «MiTallercito» en lugar del genérico de community-scripts.
 
