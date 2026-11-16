@@ -8,6 +8,17 @@ fi
 export COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/Oda615/MiTallercito/main}"
 _cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
 source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
+# Rótulo propio: el motor solo trae los de las apps de su catálogo (al enviarlo a community-scripts se quita,
+# su generador crea el suyo).
+get_header() {
+  cat <<'EOF'
+    __  ____ ______      ____               _ __
+   /  |/  (_)_  __/___ _/ / /__  __________(_) /_____
+  / /|_/ / / / / / __ `/ / / _ \/ ___/ ___/ / __/ __ \
+ / /  / / / / / / /_/ / / /  __/ /  / /__/ / /_/ /_/ /
+/_/  /_/_/ /_/  \__,_/_/_/\___/_/   \___/_/\__/\____/
+EOF
+}
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: Oda615
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE

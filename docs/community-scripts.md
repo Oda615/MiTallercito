@@ -26,6 +26,7 @@ Además: las apps nuevas **solo** entran por DevScripts; los PR con apps nuevas 
 3. En `ct/mitallercito.sh`, **borra** las líneas propias de este repo (antes del `_cs_boot=`):
    - el bloque `if [[ "${1:-}" =~ ^(update|--file|--main)$ ]]; then … fi`
    - `export COMMUNITY_SCRIPTS_URL=…`
+   - la función `get_header` con el rótulo (su generador crea el de cada app)
 4. Pruébalo en un Proxmox real desde tu fork, con depuración:
    `dev_mode="trace,keep" bash -c "$(curl -fsSL https://raw.githubusercontent.com/<tu-usuario>/DevScripts/feat/mitallercito/ct/mitallercito.sh)"`
    Prueba instalación por defecto, avanzada (IP fija, VLAN) y `update` dentro del contenedor.
