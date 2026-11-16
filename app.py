@@ -311,6 +311,7 @@ MIGRATIONS = [
     ("movements", "event_id", "INTEGER"),
     ("order_items", "variant_id", "INTEGER"),
     ("order_items", "offer_id", "INTEGER"),
+    ("order_items", "details", "TEXT DEFAULT ''"),
     ("products", "manyfold_id", "TEXT DEFAULT ''"),
     ("spools", "supplier", "TEXT DEFAULT ''"),
     ("spools", "location_id", "INTEGER"),
@@ -1168,9 +1169,10 @@ def _save_items(oid, items):
             pi = json.dumps(pi, ensure_ascii=False)
         db.execute(
             "INSERT INTO order_items(order_id,description,qty,unit_price,unit_cost,calc_json,calc_result,product_id,print_info,"
-            "variant_id,offer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            "variant_id,offer_id,details) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (oid, it["description"], int(num(it.get("qty"), 1)), num(it.get("unit_price")),
-             num(it.get("unit_cost")), cj, cr, it.get("product_id"), pi, it.get("variant_id") or None, it.get("offer_id") or None))
+             num(it.get("unit_cost")), cj, cr, it.get("product_id"), pi, it.get("variant_id") or None, it.get("offer_id") or None,
+             str(it.get("details") or "").strip()[:4000]))
 
 
 @app.post("/api/orders")
@@ -1386,10 +1388,10 @@ def repeat_order(oid):
         [datetime.now().isoformat(timespec="seconds"), secrets.token_urlsafe(16), "recibido", "interno", *vals.values()])
     nid = cur.lastrowid
     for it in o["items"]:
-        db.execute("INSERT INTO order_items(order_id,description,qty,unit_price,unit_cost,calc_json,calc_result,product_id,print_info)"
-                   " VALUES(?,?,?,?,?,?,?,?,?)",
+        db.execute("INSERT INTO order_items(order_id,description,qty,unit_price,unit_cost,calc_json,calc_result,product_id,print_info,"
+                   "variant_id,details) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                    (nid, it["description"], it["qty"], it["unit_price"], it["unit_cost"], it["calc_json"],
-                    it["calc_result"], it["product_id"], it["print_info"]))
+                    it["calc_result"], it["product_id"], it["print_info"], it.get("variant_id"), it.get("details") or ""))
     for fr in rows("SELECT * FROM files WHERE order_id=?", (oid,)):
         db.execute("INSERT INTO files(order_id,stored,name,size,sha256,uploaded,uploaded_by,note) VALUES(?,?,?,?,?,?,?,?)",
                    (nid, fr["stored"], fr["name"], fr["size"], fr["sha256"], fr["uploaded"], fr["uploaded_by"],

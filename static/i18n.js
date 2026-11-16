@@ -516,6 +516,8 @@
     'Las fotos de los pasos súbelas en «Archivos del modelo»: se ven aquí debajo y van en el .zip.': 'Upload step photos in “Model files”: they show below and go in the .zip.',
     'Stock mínimo (avisa para reponer)': 'Minimum stock (restock alert)', 'Dónde se guarda': 'Where it is kept', 'Componentes': 'Components', 'Ubicaciones': 'Locations',
     'Recuento': 'Recount', 'Stock inicial': 'Initial stock', 'Uso': 'Use',
+    'Producto (del catálogo o lo que quieras)': 'Product (from the catalog or anything you like)',
+    'Descripción libre: sale en el presupuesto y el albarán (opcional)': 'Free description: shown on the quote and delivery note (optional)',
   };
   const MONTHS = {enero: 'January', febrero: 'February', marzo: 'March', abril: 'April', mayo: 'May', junio: 'June', julio: 'July', agosto: 'August',
     septiembre: 'September', octubre: 'October', noviembre: 'November', diciembre: 'December',

@@ -618,3 +618,12 @@ def test_component_parse(admin):
     assert r["pieces"] == 100 and r["price"] == 7.99 and r["name"].startswith("Tornillos M3")
     r = admin.post("/api/components/parse", json={"text": "Imanes de neodimio 6x2 mm, pack de 50"}).get_json()
     assert r["pieces"] == 50
+
+
+def test_order_item_details(admin):
+    o = admin.post("/api/orders", json={"client": "Ana", "items": [{"description": "Llavero", "qty": 2, "unit_price": 3,
+                                                                    "details": "Grabado: «Ana»\nColor verde, anilla dorada"}]}).get_json()
+    it = admin.get(f"/api/orders/{o['id']}").get_json()["items"][0]
+    assert it["description"] == "Llavero" and it["details"] == "Grabado: «Ana»\nColor verde, anilla dorada"
+    r = admin.post(f"/api/orders/{o['id']}/repeat").get_json()
+    assert admin.get(f"/api/orders/{r['id']}").get_json()["items"][0]["details"].startswith("Grabado")

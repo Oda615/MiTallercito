@@ -510,8 +510,10 @@ $('#d-prod').onchange = async e => { const p = PRODUCTS.find(x=>x.id==e.target.v
     curOrder.items.push({description:p.name + (v?` (${v.name})`:''), qty:1, unit_price:vPrice(p, v, false), unit_cost:p.unit_cost, calc_json:cj, product_id:p.id, variant_id:v?.id||null, print_info:p.print_info||''}); }
   renderItems(); };
 function renderItems(){
-  $('#d-items').innerHTML = `<tr><th>Descripción</th><th style="width:80px">Uds</th><th style="width:110px">Precio ud</th><th style="width:110px">Coste ud</th><th style="width:120px"></th></tr>` +
-    curOrder.items.map((it,i)=>`<tr data-i="${i}"><td><input class="it-d" value="${esc(it.description)}"></td><td><input class="it-q" type="number" min="1" value="${it.qty}"></td>
+  $('#prod-list').innerHTML = (PRODUCTS||[]).map(p=>`<option value="${esc(p.name)}">`).join('');
+  $('#d-items').innerHTML = `<tr><th>Producto</th><th style="width:80px">Uds</th><th style="width:110px">Precio ud</th><th style="width:110px">Coste ud</th><th style="width:120px"></th></tr>` +
+    curOrder.items.map((it,i)=>`<tr data-i="${i}"><td><input class="it-d" list="prod-list" value="${esc(it.description)}" placeholder="Producto (del catálogo o lo que quieras)" onchange="itProduct(this)">
+      <textarea class="it-x" rows="${Math.min(6, Math.max(1, String(it.details||'').split('\n').length))}" placeholder="Descripción libre: sale en el presupuesto y el albarán (opcional)" oninput="itRows(this)">${esc(it.details||'')}</textarea></td><td><input class="it-q" type="number" min="1" value="${it.qty}"></td>
       <td><input class="it-p" type="number" step="0.01" value="${it.unit_price}"></td><td><input class="it-c" type="number" step="0.01" value="${it.unit_cost}"></td>
       <td style="white-space:nowrap"><button class="btn sm ${hasFicha(it)?'sec':''}" title="Ficha de impresión" onclick="editFicha(${i})">${hasFicha(it)?'Ficha ✓':'Ficha'}</button>${curOrder.id&&it.calc_result?` <button class="btn sec sm" title="La impresión falló: apunta lo que se ha perdido" onclick="addFailure(${i})">Fallo</button>`:''} <button class="btn sec sm" onclick="readItems();curOrder.items.splice(${i},1);renderItems()">✕</button></td></tr>`).join('');
   $('#d-items').oninput = dlgTotals; dlgTotals();
@@ -541,7 +543,14 @@ async function addFailure(i){
 }
 async function delFailure(id){ if (!await sure('¿Borrar este fallo? El material vuelve al stock.', {ok:'Borrar', danger:1})) return; await api('/failures/'+id,{method:'DELETE'});
   curOrder = await api('/orders/'+curOrder.id); renderOrderExtra(); }
-function readItems(){ curOrder.items = $$('#d-items tr[data-i]').map(r=>({...curOrder.items[r.dataset.i], description:r.querySelector('.it-d').value, qty:+r.querySelector('.it-q').value||1, unit_price:+r.querySelector('.it-p').value||0, unit_cost:+r.querySelector('.it-c').value||0})); }
+// Al escribir o elegir un producto del catálogo en una línea nueva, coge su precio y su coste
+function itRows(t){ t.rows = Math.min(8, Math.max(1, t.value.split('\n').length)); }
+function itProduct(inp){
+  const i = +inp.closest('tr').dataset.i, it = curOrder.items[i], p = (PRODUCTS||[]).find(x=>x.name.toLowerCase()===inp.value.trim().toLowerCase());
+  if (!p || it.product_id===p.id) return;
+  readItems(); Object.assign(curOrder.items[i], {description:p.name, product_id:p.id, unit_price:p.unit_price||0, unit_cost:p.unit_cost||0}); renderItems();
+}
+function readItems(){ curOrder.items = $$('#d-items tr[data-i]').map(r=>({...curOrder.items[r.dataset.i], description:r.querySelector('.it-d').value, details:r.querySelector('.it-x').value, qty:+r.querySelector('.it-q').value||1, unit_price:+r.querySelector('.it-p').value||0, unit_cost:+r.querySelector('.it-c').value||0})); }
 function addItemRow(){ readItems(); curOrder.items.push({description:'',qty:1,unit_price:0,unit_cost:0}); renderItems(); }
 function dlgTotals(){ readItems();
   const sub = curOrder.items.reduce((a,i)=>a+i.qty*i.unit_price,0), cost = curOrder.items.reduce((a,i)=>a+i.qty*i.unit_cost,0);
@@ -575,14 +584,15 @@ function printOrder(kind){
     body{font:13px/1.5 system-ui,sans-serif;color:#222;margin:40px}h1{margin:0;font-size:26px;color:${acc}}
     .top{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid ${acc};padding-bottom:14px}
     .top img{max-height:70px;max-width:200px}.meta{text-align:right}table{width:100%;border-collapse:collapse;margin-top:24px}
-    th{background:${acc};color:#fff;text-align:left;padding:8px}td{padding:8px;border-bottom:1px solid #ddd}.n{text-align:right}
+    th{background:${acc};color:#fff;text-align:left;padding:8px}td{padding:8px;border-bottom:1px solid #ddd;vertical-align:top}.n{text-align:right}
+    .det{white-space:pre-line;color:#555;font-size:12px;margin-top:3px}
     .tot{margin-left:auto;width:280px;margin-top:14px}.tot td{border:0;padding:4px 8px}.tot tr:last-child td{font-weight:700;font-size:16px;border-top:2px solid #222}
     .foot{margin-top:40px;color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:10px}@media print{body{margin:0}}</style></head><body>
     <div class="top"><div>${BRAND.logo_url?`<img src="${BRAND.logo_url}"><br>`:''}<b>${esc(BRAND.shop_name||'')}</b><br><span style="color:#777">${biz}</span></div>
     <div class="meta"><h1>${title}</h1><b>${num}</b><br>${t('Fecha')}: ${fmt(today)}${kind==='presupuesto'?`<br>${t('Válido hasta')}: ${fmt(valid)}`:''}
     <br><br><b>${t('Cliente')}</b><br>${esc(o.client)}${o.email?'<br>'+esc(o.email):''}${o.contact?'<br>'+esc(o.contact):''}${o.address?'<br>'+esc(o.address):''}</div></div>
     <table><tr><th>${t('Descripción')}</th><th class="n">${t('Uds')}</th><th class="n">${t('Precio')}</th><th class="n">${t('Importe')}</th></tr>
-    ${o.items.map(i=>`<tr><td>${esc(i.description)}</td><td class="n">${i.qty}</td><td class="n">${eur(i.unit_price)}</td><td class="n">${eur(i.qty*i.unit_price)}</td></tr>`).join('')}
+    ${o.items.map(i=>`<tr><td>${i.details?`<b>${esc(i.description)}</b><div class="det">${esc(i.details)}</div>`:esc(i.description)}</td><td class="n">${i.qty}</td><td class="n">${eur(i.unit_price)}</td><td class="n">${eur(i.qty*i.unit_price)}</td></tr>`).join('')}
     ${o.shipping?`<tr><td>${t('Envío')}</td><td class="n">1</td><td class="n">${eur(o.shipping)}</td><td class="n">${eur(o.shipping)}</td></tr>`:''}
     ${o.discount?`<tr><td>${t('Descuento')}</td><td></td><td></td><td class="n">−${eur(o.discount)}</td></tr>`:''}</table>
     <table class="tot">${vatRate?`<tr><td>${t('Base imponible')}</td><td class="n">${eur(base)}</td></tr><tr><td>${t('IVA')} ${S.vat_pct}%</td><td class="n">${eur(vat)}</td></tr>`:''}
