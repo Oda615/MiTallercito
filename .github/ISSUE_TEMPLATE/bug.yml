@@ -1,0 +1,29 @@
+name: 🐞 Algo no funciona
+description: Cuéntanos un fallo
+labels: [bug]
+body:
+  - type: textarea
+    id: que
+    attributes:
+      label: ¿Qué pasa?
+      description: Qué hiciste, qué esperabas y qué ocurrió.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: Sale en la cabecera de la web (vX.Y.Z) o con `mitallercito version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: instalacion
+    attributes:
+      label: Instalación
+      options: [Proxmox LXC, Docker, A mano]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`journalctl -u mitallercito -n 80` o `docker compose logs mitallercito` (quita datos personales)."
+      render: text

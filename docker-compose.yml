@@ -1,0 +1,14 @@
+# docker compose up -d   →  mira el enlace de primer arranque con:  docker compose logs mitallercito
+services:
+  mitallercito:
+    image: ghcr.io/oda615/mitallercito:latest
+    # build: .            # para construirla tú
+    container_name: mitallercito
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Europe/Madrid
+      # MT_PROXY_HOPS: "1"   # detrás de un proxy inverso (2 si además Cloudflare con nube naranja)

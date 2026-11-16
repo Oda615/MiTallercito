@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MiTallercito</title>
+<link rel="icon" id="fav" href="/favicon.ico">
+<link rel="stylesheet" href="/static/app.css?v=__V__">
+</head>
+<body>
+<div id="login" class="card hidden">
+  <div class="brand"><img class="b-logo hidden" alt=""><div><h2 class="b-name" style="margin:0">MiTallercito</h2><div class="tl b-tag"></div></div></div>
+  <form onsubmit="doLogin(event)">
+    <label>Usuario</label><input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label style="margin-top:10px">Contraseña</label><input id="lp" type="password" autocomplete="current-password">
+    <p id="lerr" class="neg"></p>
+    <button class="btn" style="width:100%">Entrar</button>
+  </form>
+  <p class="mut" style="text-align:center;font-size:12px;margin:14px 0 0">Hecho con <b>MiTallercito</b></p>
+</div>
+
+<div id="setup" class="hidden" style="max-width:820px;margin:4vh auto;padding:0 16px">
+  <div class="card">
+    <div class="brand" style="margin-bottom:6px"><img class="b-logo hidden" alt=""><div><h1 class="b-name" style="font-size:22px;margin:0">MiTallercito</h1></div></div>
+    <div class="row" style="margin-top:14px;align-items:center"><h2 style="margin:0">Primer arranque</h2><div></div>
+      <div style="flex:0 0 190px"><select id="su-lang" data-notr onchange="I18N.setLang(this.value); if ($('#su-mats').dataset.touched!=='1'){ $('#su-mats').innerHTML=''; MAT_PRESETS.forEach(suMat); }"><option value="es">🇪🇸 Español</option><option value="en">🇬🇧 English</option></select></div></div>
+    <p class="mut" style="margin-top:0">Configura tu tienda. Todo esto se puede cambiar después en Ajustes.</p>
+    <div class="grid g3">
+      <div><label>Código de instalación</label><input id="su-token" autocomplete="off" placeholder="sale al instalar / mitallercito setup-token"></div>
+      <div><label>Tu usuario (administrador)</label><input id="su-user" autocapitalize="none" autocomplete="username"></div>
+      <div><label>Contraseña (mín. 8)</label><input id="su-pw" type="password" autocomplete="new-password"></div>
+      <div><label>Repite la contraseña</label><input id="su-pw2" type="password" autocomplete="new-password"></div>
+      <div><label>Nombre de la tienda</label><input id="su-shop" placeholder="MiTallercito"></div>
+      <div><label>Quiénes sois (separados por coma)</label><input id="su-people" placeholder="Ana, Luis"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Impresoras</h2>
+    <p class="mut" style="font-size:12px;margin-top:0">Consumo medio en W (mira la etiqueta o mide con un enchufe medidor; una FDM típica gasta 100-250 W) y lo que te costó, para repartir la amortización.</p>
+    <div id="su-printers"></div>
+    <button class="btn sec sm" onclick="suPrinter()">+ impresora</button>
+  </div>
+  <div class="card">
+    <h2>Materiales</h2>
+    <p class="mut" style="font-size:12px;margin-top:0">Marca los que uses y pon el precio que pagas por envase.</p>
+    <div id="su-mats"></div>
+    <button class="btn sec sm" onclick="suMat({name:'',kind:'',price:'',qty:1000,unit:'g',on:true})">+ material</button>
+  </div>
+  <div class="card">
+    <h2>Precios</h2>
+    <div class="grid g4">
+      <div><label>Precio de la luz €/kWh</label><input id="su-kwh" type="number" step="0.01" value="0.18"></div>
+      <div><label>Margen de beneficio %</label><input id="su-margin" type="number" value="30"></div>
+      <div><label>Tu tiempo €/hora</label><input id="su-rate" type="number" value="15"></div>
+      <div><label>IVA</label><select id="su-vat"><option value="21">Aplicar 21%</option><option value="10">Aplicar 10%</option><option value="0">Sin IVA (particular)</option></select></div>
+    </div>
+    <p id="su-err" class="neg"></p>
+    <button class="btn" style="width:100%;margin-top:6px" onclick="doSetup()">Crear mi tienda</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<aside id="side">
+  <div class="brand"><img class="b-logo hidden" alt=""><div><h1 class="b-name">MiTallercito</h1><div class="tl b-tag"></div></div></div>
+  <button class="sbtn" onclick="openSearch()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg><span>Buscar…</span><kbd>Ctrl K</kbd></button>
+  <nav id="nav">
+    <button data-v="home" class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Inicio</span></button>
+    <div class="ng">Vender</div>
+    <button data-v="pos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18l-1.5 11h-15z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg><span>Venta</span></button>
+    <button data-v="orders"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg><span>Pedidos</span></button>
+    <button data-v="cli"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.7 3 2.4 3.5 5.2"/></svg><span>Clientes</span></button>
+    <button data-v="calc"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg><span>Calculadora</span></button>
+    <div class="ng">Taller</div>
+    <button data-v="prn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v4H4z"/><path d="M6 8v12h12V8"/><path d="M12 8v5"/><path d="M10 13h4l-2 2.5z"/><path d="M8.5 19h7"/></svg><span>Impresoras</span></button>
+    <button data-v="stk"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-5 9 5-9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg><span>Almacén</span></button>
+    <button data-v="cat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Catálogo</span></button>
+    <div class="ng">Cuentas</div>
+    <button data-v="acc"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14.5h2"/></svg><span>Contabilidad</span></button>
+    <button data-v="rep"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg><span>Extracto</span></button>
+    <div class="ng">Sistema</div>
+    <button data-v="cfg"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Ajustes</span></button>
+    <button data-v="mnt" class="admin-only"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></svg><span>Sistema</span></button>
+  </nav>
+  <div class="who"><span id="who"></span> <span id="ver" class="mut"></span><a href="#" onclick="doLogout()" title="Salir"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg><span>salir</span></a></div>
+</aside>
+<div id="scrim" onclick="drawer(false)"></div>
+<header class="topbar">
+  <button class="ibtn" onclick="drawer(true)" aria-label="Menú"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="brand"><img class="b-logo hidden" alt=""><div><h1 class="b-name">MiTallercito</h1><div class="tl b-tag"></div></div></div>
+  <button class="ibtn" onclick="openSearch()" aria-label="Buscar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg></button>
+</header>
+<nav id="tabbar">
+    <button data-v="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Inicio</span></button>
+    <button data-v="pos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18l-1.5 11h-15z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg><span>Venta</span></button>
+    <button data-v="orders"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg><span>Pedidos</span></button>
+    <button data-v="stk"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-5 9 5-9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg><span>Almacén</span></button>
+    <button data-more onclick="drawer(true)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Más</span></button>
+</nav>
+<div class="shell">
+<main>
+<div id="lowstock" class="card hidden" style="border-color:#d9a400;background:color-mix(in srgb,#d9a400 10%,var(--card))"></div>
+
+<!-- ============ INICIO ============ -->
+<section id="v-home">
+  <div class="row home-head" style="margin-bottom:14px;align-items:center">
+    <div><h2 style="margin:0;font-size:22px" id="h-hello">Hola</h2><div class="mut" id="h-sub"></div></div>
+    <button class="btn" onclick="openOrder()">+ Nuevo pedido</button>
+    <button class="btn sec" onclick="show('pos')">Venta rápida</button>
+    <button class="btn sec" onclick="show('calc')">Calcular precio</button>
+    <button class="btn sec" onclick="show('acc');setTimeout(()=>$('#m-concept').focus(),300)">Apuntar gasto</button>
+  </div>
+  <div class="grid g4" id="h-kpis"></div>
+  <div class="grid g2">
+    <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0">Próximas entregas</h2><div></div><a href="#orders" onclick="show('orders')" style="flex:0 0 auto;font-size:13px">ver todos</a></div>
+      <div class="chips" id="h-status" style="margin:12px 0"></div><table id="h-upcoming"></table></div>
+    <div>
+      <div class="card hidden" id="h-fc-card"><h2>Filamento</h2><div id="h-fc"></div></div>
+      <div class="card hidden" id="h-org-card"><h2>Taller</h2><div id="h-org"></div></div>
+      <div class="card hidden" id="h-maint-card"><h2>Mantenimiento</h2><div id="h-maint"></div></div>
+      <div class="card hidden" id="h-events-card"><h2>Puestos abiertos</h2><div id="h-events"></div></div>
+      <div class="card" id="h-printers-card"><h2>Impresoras</h2><div id="h-printers"></div></div>
+      <div class="card"><h2>Sin cobrar</h2><div id="h-unpaid"></div></div>
+      <div class="card hidden" id="h-stock-card"><h2>Stock bajo</h2><div id="h-stock"></div></div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Lo más vendido este mes</h2><table id="h-top"></table></div>
+    <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0">Últimos movimientos</h2><div></div><a href="#acc" onclick="show('acc')" style="flex:0 0 auto;font-size:13px">contabilidad</a></div><table id="h-moves" style="margin-top:8px"></table></div>
+  </div>
+</section>
+
+<!-- ============ CALCULADORA ============ -->
+<section id="v-calc" class="hidden">
+ <div class="grid g2">
+  <div>
+   <div class="card" id="drop">
+    <h2>Importar del laminador</h2>
+    <div class="row">
+      <div style="flex:3"><input type="file" id="sl-file" accept=".gcode,.gco,.g,.3mf"></div>
+    </div>
+    <p class="mut" style="font-size:12px;margin:8px 0 0">Arrastra aquí el <b>.gcode</b> o el <b>.3mf laminado</b> (Snapmaker Orca, Anycubic Slicer Next, Orca, Bambu, Prusa, Cura). Rellena tiempo, impresora, gramos por color y coste del laminador. Se lee en tu navegador: el archivo no se sube.</p>
+    <div id="sl-result" class="hidden" style="margin-top:10px;font-size:13px"></div>
+   </div>
+   <div class="card">
+    <h2>Impresión</h2>
+    <div class="row">
+      <div><label>Impresora</label><select id="c-printer"></select></div>
+      <div><label>Horas</label><input id="c-hours" type="number" min="0" placeholder="0"></div>
+      <div><label>Minutos</label><input id="c-minutes" type="number" min="0" placeholder="0"></div>
+      <div><label>Piezas que salen</label><input id="c-units" type="number" min="1" value="1"></div>
+    </div>
+    <p class="mut" style="font-size:12px;margin:8px 0 0">Mete el tiempo real de la impresión (no el del laminador si sabes que se desvía). Si imprimes una placa con varias piezas, pon el total y cuántas salen.</p>
+   </div>
+   <div class="card">
+    <h2>Material</h2>
+    <div class="chips">
+      <button class="btn sm" id="mm-grams" onclick="setMatMode('grams')">Por gramos / ml</button>
+      <button class="btn sm sec" id="mm-direct" onclick="setMatMode('direct')">Coste del laminador (€)</button>
+    </div>
+    <div id="mm-direct-box" class="hidden" style="margin-bottom:12px">
+      <div class="row"><div style="flex:0 0 200px"><label>Coste de material del laminador €</label><input id="c-matcost" type="number" min="0" step="0.01" placeholder="ej. 1,84"></div><div></div></div>
+      <p class="mut" style="font-size:12px;margin:8px 0 0">Coste total que te da el slicer. En este modo no se suma merma (el laminador ya cuenta purgas y torre). Los gramos de abajo se usan solo para descontar stock y para el extracto.</p>
+    </div>
+    <div id="mm-grams-box">
+      <div id="c-mats"></div>
+      <button class="btn sec sm" onclick="addMatRow()">+ material / color</button>
+    </div>
+   </div>
+   <div class="card">
+    <h2>Mano de obra</h2>
+    <div class="row">
+      <div><label>Preparación (min)</label><input id="c-prep" type="number" min="0" placeholder="0"></div>
+      <div><label>Postprocesado (min)</label><input id="c-post" type="number" min="0" placeholder="0"></div>
+    </div>
+   </div>
+   <div class="card">
+    <h2>Otros gastos</h2>
+    <div id="c-extras"></div>
+    <button class="btn sec sm" onclick="addExtraRow()">+ gasto (embalaje, imanes, pintura…)</button>
+   </div>
+   <div class="card">
+    <h2>Venta</h2>
+    <div class="row">
+      <div><label>Margen %</label><input id="c-margin" type="number"></div>
+      <div><label>Tipo</label><select id="c-sale"><option>B2C</option><option>B2B</option></select></div>
+      <div><label>Comisión %</label><input id="c-comm" type="number"></div>
+      <div><label>Comisión fija €</label><input id="c-commf" type="number" step="0.01"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div><label>Redondeo</label><select id="c-round"><option value="none">Sin redondeo</option><option value="0.99">x,99</option><option value="0.50">x,50</option><option value="1.00">€ entero</option></select></div>
+      <div><label>Precio mínimo € (por pieza)</label><input id="c-min" type="number" step="0.01"></div>
+      <div><label>IVA</label><select id="c-vat"><option value="1">Aplicar IVA</option><option value="0">Sin IVA</option></select></div>
+    </div>
+    <p class="mut" style="font-size:12px;margin:8px 0 0">Por defecto toma los valores de Ajustes; aquí los puedes cambiar solo para este cálculo.</p>
+   </div>
+  </div>
+
+  <div>
+   <div class="card" style="position:sticky;top:76px">
+    <h2 id="r-title">Precio total</h2>
+    <div id="r-stale" class="hidden" style="background:color-mix(in srgb,#d9a400 15%,var(--card));border:1px solid #d9a400;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px">Has cambiado datos: este precio ya no vale. Pulsa <b>Recalcular</b>.</div>
+    <div class="row" style="margin-bottom:6px;align-items:end">
+      <div style="flex:1"><div class="l mut" style="font-size:12px">Sin IVA</div><div class="big" id="r-price-ex">–</div></div>
+      <div style="flex:1"><div class="l mut" style="font-size:12px">Con IVA</div><div class="big" id="r-price">–</div></div>
+      <button class="btn" id="c-calc" onclick="runCalc()" style="align-self:center">Calcular</button>
+      <button class="btn sec sm" onclick="resetCalc()" style="align-self:center" title="Vaciar el formulario">Nuevo</button></div>
+    <div class="mut" id="r-sub">Rellena los datos y pulsa Calcular.</div>
+    <div id="r-adj" class="hidden" style="margin-top:8px;font-size:13px;border-left:3px solid #d9a400;padding:4px 10px"></div>
+    <div class="grid g3" style="margin:16px 0">
+      <div class="kpi"><div class="v" id="r-cost">–</div><div class="l">te cuesta (total)</div></div>
+      <div class="kpi"><div class="v pos" id="r-profit">–</div><div class="l">ganas (total)</div></div>
+      <div class="kpi"><div class="v" id="r-batch">–</div><div class="l">IVA a ingresar</div></div>
+    </div>
+    <div class="mine hidden" id="r-mine">
+      <div class="row" style="align-items:end">
+        <div style="flex:1 1 180px"><label for="c-mine" id="c-mine-l">¿Prefieres otro precio? Tu precio por pieza</label>
+          <input id="c-mine" inputmode="decimal" placeholder="déjalo vacío para usar el calculado" oninput="mineCalc()"></div>
+        <button class="btn sec sm hidden" id="c-mine-x" onclick="$('#c-mine').value='';mineCalc()">Usar el calculado</button>
+      </div>
+      <div id="r-mine-out"></div>
+    </div>
+    <div class="bar" id="r-bar"></div>
+    <div class="legend" id="r-legend"></div>
+    <table style="margin-top:14px" id="r-table"></table>
+    <div class="row" style="margin-top:14px">
+      <div><input id="c-name" placeholder="Nombre (ej. Grip AK, llavero…)"></div>
+      <button class="btn sec" onclick="saveProduct()">Guardar en catálogo</button>
+      <button class="btn" onclick="toOrder()">Añadir a pedido</button>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ PEDIDOS ============ -->
+<section id="v-orders" class="hidden">
+  <div class="row" style="margin-bottom:12px">
+    <div class="chips" id="o-filter" style="flex:1"></div>
+    <button class="btn" onclick="openOrder()">+ Nuevo pedido</button>
+  </div>
+  <div class="card"><table id="o-table"></table></div>
+</section>
+
+<!-- ============ CONTABILIDAD ============ -->
+<section id="v-acc" class="hidden">
+  <div class="row" style="margin-bottom:12px">
+    <div style="flex:0 0 120px"><label>Año</label><select id="a-year" onchange="loadAcc()"></select></div>
+    <div></div>
+    <a class="btn sec" href="/api/export/movements.csv">Exportar CSV</a>
+    <a class="btn sec admin-only" href="/api/backup">Backup BD</a>
+  </div>
+  <div class="grid g4">
+    <div class="card kpi"><div class="v pos" id="k-in">–</div><div class="l">ingresos</div></div>
+    <div class="card kpi"><div class="v neg" id="k-out">–</div><div class="l">gastos</div></div>
+    <div class="card kpi"><div class="v" id="k-ben">–</div><div class="l">beneficio</div></div>
+    <div class="card kpi"><div class="v" id="k-pend">–</div><div class="l">pendiente de cobro · <span id="k-open"></span> pedidos abiertos</div></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Por mes</h2><div class="mbar" id="a-chart"></div><div class="legend"><span><b style="background:var(--acc2)"></b>ingresos</span><span><b style="background:var(--acc)"></b>gastos</span></div></div>
+    <div class="card"><h2>Entre vosotros</h2><table id="a-people"></table><p class="mut" style="font-size:12px" id="a-settle"></p></div>
+  </div>
+  <div class="card">
+    <h2>Nuevo movimiento</h2>
+    <div class="row">
+      <div style="flex:0 0 140px"><label>Fecha</label><input id="m-date" type="date"></div>
+      <div style="flex:0 0 120px"><label>Tipo</label><select id="m-kind"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></div>
+      <div><label>Categoría</label><select id="m-cat"></select></div>
+      <div style="flex:2"><label>Concepto</label><input id="m-concept"></div>
+      <div style="flex:0 0 110px"><label>Importe €</label><input id="m-amount" type="number" step="0.01"></div>
+      <div><label>Quién</label><select id="m-person"></select></div>
+      <button class="btn" onclick="addMovement()">Añadir</button>
+    </div>
+  </div>
+  <div class="card" id="rc-card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Gastos fijos</h2><div></div>
+      <span class="mut" style="font-size:13px;flex:0 0 auto" id="rc-total"></span>
+      <button class="btn sm" style="flex:0 0 auto" onclick="editRecurring()">+ Nuevo gasto fijo</button></div>
+    <p class="mut" style="font-size:12px">Cuota de autónomo, dominio, alquiler, suscripciones… Se apuntan solos como gasto el día que toca, sin duplicarse.</p>
+    <div class="scroll"><table id="rc-table"></table></div>
+  </div>
+  <div class="card"><h2>Movimientos</h2><table id="a-table"></table></div>
+</section>
+
+<!-- ============ IMPRESORAS ============ -->
+<section id="v-prn" class="hidden">
+  <div class="grid g3" id="pr-cards"></div>
+  <p class="mut" style="font-size:12px" id="pr-help"></p>
+  <div class="card hidden" id="pr-hist"></div>
+  <div class="row" style="align-items:center;margin:8px 0 12px"><h2 style="margin:0;font-size:18px">Mantenimiento</h2><div></div>
+    <span class="mut" style="font-size:12px;flex:1 1 220px;text-align:right">Cuenta las horas con Moonraker o, si no hay conexión, con los pedidos y los fallos</span></div>
+  <div class="grid g2" id="mt-wrap"></div>
+</section>
+
+<!-- ============ VENTA (puestos, mercadillos…) ============ -->
+<section id="v-pos" class="hidden">
+  <div class="row" style="align-items:end;margin-bottom:12px">
+    <div style="flex:2"><label>Puesto</label><select id="pos-ev" onchange="posEvent()"></select></div>
+    <button class="btn sec" style="flex:0 0 auto" onclick="newEvent()">+ Nuevo puesto</button>
+    <button class="btn sec hidden" style="flex:0 0 auto" id="pos-edit" onclick="editEvent()">Editar puesto</button>
+  </div>
+  <div class="pos-grid">
+    <div class="card">
+      <input id="pos-q" placeholder="Buscar producto…" oninput="posProducts()">
+      <div id="pos-prods" class="pos-prods"></div>
+      <button class="btn sec sm" onclick="posFree()">+ Otro importe</button>
+    </div>
+    <div class="card pos-cart">
+      <h2>Venta</h2>
+      <table id="pos-cart"></table>
+      <label style="margin-top:12px">Forma de pago</label><div class="seg" id="pos-pay"></div>
+      <div class="grid g2" style="margin-top:8px;gap:10px">
+        <div><label>Cobra</label><select id="pos-who"></select></div>
+        <div><label>Cliente (opcional)</label><input id="pos-client" list="cl-list" placeholder="anónimo"></div>
+      </div>
+      <button class="btn pos-go" id="pos-go" onclick="posCharge()">Cobrar</button>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card" id="pos-sum"></div>
+    <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0">Lo que llevas al puesto</h2><div></div><button class="btn sec sm" style="flex:0 0 auto" onclick="saveTake()">Guardar</button></div>
+      <p class="mut" style="font-size:12px">Apunta cuántas llevas de cada cosa y al cerrar sabrás qué tiene que volver.</p><div id="pos-take" class="scroll"></div></div>
+  </div>
+  <div class="card"><h2>Ventas</h2><div class="scroll"><table id="pos-sales"></table></div></div>
+  <div class="pos-bar" id="pos-bar" onclick="$('.pos-cart').scrollIntoView({behavior:'smooth'})"></div>
+</section>
+
+<!-- ============ CLIENTES ============ -->
+<section id="v-cli" class="hidden">
+  <div class="card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Clientes</h2><div></div>
+      <input id="cl-q" placeholder="Buscar…" style="max-width:240px" oninput="renderClients()">
+      <button class="btn" style="flex:0 0 auto" onclick="openClient()">+ Nuevo cliente</button></div>
+    <p class="mut" style="font-size:13px">Se crean solos al hacer un pedido con nombre. Las ventas en puestos sin nombre van como «Venta anónima» y no crean ficha.</p>
+    <div class="scroll"><table id="cl-table"></table></div>
+  </div>
+</section>
+
+<!-- ============ EXTRACTO ============ -->
+<section id="v-rep" class="hidden">
+  <div class="row" style="margin-bottom:12px">
+    <div style="flex:0 0 120px"><label>Año</label><select id="r-year" onchange="loadRep()"></select></div>
+    <div><p class="mut" style="font-size:12px;margin:0">Sale de los pedidos (sin presupuestos ni cancelados), agrupados por mes de creación. Usa el desglose guardado al crear cada línea, así que no cambia si luego tocas precios en Ajustes.</p></div>
+    <a class="btn sec" id="r-csv" href="#">Exportar CSV</a>
+  </div>
+  <div class="grid g4" id="r-kpis"></div>
+  <div class="card scroll"><h2>Mes a mes</h2><table class="rep" id="rp-table"></table></div>
+  <div class="card" id="r-detail"></div>
+</section>
+
+<!-- ============ CATÁLOGO ============ -->
+<section id="v-stk" class="hidden">
+  <div class="seg stk-tabs" id="stk-tabs">
+    <button data-p="fil" class="on">Filamento</button><button data-p="comp">Componentes</button><button data-p="fin">Terminado</button>
+    <button data-p="loc">Ubicaciones</button><button data-p="buy">Compra <span class="cnt" id="buy-n"></span></button>
+  </div>
+  <div class="stk-pane" data-p="fil">
+  <div class="card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Colores que tienes</h2><div></div>
+      <label class="switch" style="flex:0 0 auto"><input type="checkbox" id="sk-showempty" onchange="loadStock()"> ver gastadas</label></div>
+    <div id="sk-palette" style="margin-top:12px"></div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h2>¿Lo puedo imprimir con lo que tengo?</h2>
+      <p class="mut" style="font-size:12px;margin-top:0">Pon los colores y gramos que pide el modelo, o impórtalos de la calculadora tras soltar su 3MF/G-code.</p>
+      <div id="mk-needs"></div>
+      <div class="row" style="margin-top:6px"><button class="btn sec sm" onclick="mkNeed()">+ color</button><button class="btn sec sm" onclick="mkFromSlicer()">Usar lo del laminador</button><div></div><button class="btn" onclick="mkCheck()">Comprobar</button></div>
+      <div id="mk-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Añadir bobinas</h2>
+      <div class="paste">
+        <label for="sa-paste">Pegar de Amazon o de la tienda</label>
+        <div class="row" style="flex-wrap:nowrap"><input id="sa-paste" placeholder="Enlace o título del producto" onpaste="setTimeout(saPaste,0)" onkeydown="if(event.key==='Enter'){event.preventDefault();saPaste()}">
+          <button class="btn sec" style="flex:0 0 auto" onclick="saPaste()">Leer</button></div>
+        <div id="sa-pres" class="hidden"></div>
+      </div>
+      <div class="grid g2">
+        <div><label>Material</label><select id="sa-mat" onchange="saMatChange()"></select></div>
+        <div class="sa-new hidden"><label>Tipo</label><select id="sa-kind" onchange="saNewName()"></select></div>
+        <div class="sa-new hidden" style="grid-column:1/-1"><label>Nombre del material nuevo</label><input id="sa-mname" oninput="this.dataset.touched=1" placeholder="PLA negro, PETG Sunlu…">
+          <div class="hint">Se crea al añadir la bobina. Su precio sale de lo pagado; si lo dejas vacío, se usa uno estándar que puedes cambiar en Ajustes.</div></div>
+        <div><label>Marca</label><input id="sa-brand" list="sa-brands" onchange="saTare()" placeholder="Sunlu, eSun, Bambu…"><datalist id="sa-brands"></datalist></div>
+        <div><label>Color</label><input id="sa-cname" placeholder="Negro, Rojo fuego…" oninput="saNewName()"></div>
+        <div><label>Tono</label><input id="sa-chex" type="color" value="#222222" oninput="this.dataset.touched=1" style="height:40px;padding:4px"></div>
+        <div><label>Peso neto (g / ml)</label><input id="sa-net" type="number" value="1000"></div>
+        <div><label>Bobina vacía (g)</label><input id="sa-tare" type="number" placeholder="si la sabes"></div>
+        <div><label>Cuántas</label><input id="sa-count" type="number" min="1" value="1"></div>
+        <div><label>Ubicación</label><input id="sa-loc" list="loc-list" placeholder="Estante 2, caja A…"></div>
+        <div><label>Pagado en total € (opcional)</label><input id="sa-paid" type="number" step="0.01"></div>
+        <div><label>Quién pagó</label><select id="sa-person"></select></div>
+        <div><label>Proveedor</label><input id="sa-sup" list="sup-list" placeholder="Amazon, tienda de la marca…"></div>
+        <div><label class="switch" style="margin-top:24px"><input type="checkbox" id="sa-upd" checked> Actualizar el precio del material</label></div>
+      </div>
+      <div id="sa-shop" class="hint hidden"></div>
+      <p class="mut" style="font-size:12px" id="sa-tarehelp"></p>
+      <button class="btn" onclick="addSpools()">Añadir al almacén</button>
+    </div>
+  </div>
+  <div class="card" id="fc-card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Previsión</h2><div></div>
+      <span class="mut" style="font-size:12px;flex:0 0 auto" id="fc-help"></span></div>
+    <p class="mut" style="font-size:12px">Lo que piden los pedidos aún sin imprimir frente a lo que te queda, y cuándo se acabará al ritmo de los últimos días.</p>
+    <div class="scroll"><table id="fc-table"></table></div>
+    <details class="admin-only" style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:13px">Ajustes de la previsión</summary>
+      <div class="grid g3" style="margin-top:8px">
+        <div><label>Días que tarda en llegar una compra</label><input id="fc-lead" type="number" min="0"></div>
+        <div><label>Calcular el ritmo con los últimos (días)</label><input id="fc-win" type="number" min="7"></div>
+        <div><label class="switch" style="margin-top:22px"><input type="checkbox" id="fc-quotes"> Contar también los presupuestos</label></div>
+      </div><button class="btn sec sm" style="margin-top:8px" onclick="saveForecastCfg()">Guardar</button></details>
+  </div>
+  <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0">Bobinas</h2><div></div>
+    <button class="btn sec sm" style="flex:0 0 auto" onclick="printLabels(true)">Etiquetas de las marcadas</button>
+    <button class="btn sec sm" style="flex:0 0 auto" onclick="printLabels(false)">Etiquetas de todas</button></div>
+    <p class="mut" style="font-size:12px;margin-top:0">Lo que queda se descuenta solo al imprimir (y en los fallos). Para afinar, <b>pésala</b>: lo que queda = peso − bobina vacía. Al gastar o borrar una bobina, pesa la bobina vacía y se guarda para esa marca.</p>
+    <div class="scroll"><table id="sk-table"></table></div></div>
+  <div class="grid g2">
+    <div class="card"><h2>Por material</h2><table id="st-table"></table></div>
+    <div class="card"><h2>Bobinas vacías por marca</h2><p class="mut" style="font-size:12px;margin-top:0">Se aprende sola al gastar bobinas; también puedes ponerla a mano.</p><table id="tr-table"></table>
+      <div class="row" style="margin-top:8px"><div><input id="tr-brand" placeholder="Marca"></div><div><input id="tr-kind" placeholder="Material (PLA…)"></div><div><input id="tr-g" type="number" placeholder="g"></div><button class="btn sec sm" onclick="saveTare()">Guardar</button></div></div>
+  </div>
+  </div>
+  <div class="stk-pane hidden" data-p="comp">
+    <div class="card">
+      <div class="row" style="align-items:center"><h2 style="margin:0">Componentes y ferretería</h2><div></div>
+        <label class="switch" style="flex:0 0 auto"><input type="checkbox" id="cp-count" onchange="cpRender()"> Modo recuento</label>
+        <button class="btn sm" style="flex:0 0 auto" onclick="compEdit()">+ Nuevo componente</button></div>
+      <p class="mut" style="font-size:12px">Muelles, tornillos, insertos, imanes, rodamientos, cajas, bolsas, pintura… Su coste por unidad sale del pack, y al llegar al mínimo pasan solos a la lista de la compra. Se gastan solos en los pedidos según la receta de cada artículo.</p>
+      <div class="row" style="margin-bottom:8px"><div style="flex:2"><input id="cp-q" placeholder="Buscar…" oninput="cpRender()"></div>
+        <div><select id="cp-cat" onchange="cpRender()"></select></div>
+        <label class="switch" style="flex:0 0 auto"><input type="checkbox" id="cp-low" onchange="cpRender()"> Solo los que faltan</label></div>
+      <div class="scroll"><table id="cp-table"></table></div>
+    </div>
+  </div>
+  <div class="stk-pane hidden" data-p="fin">
+    <div class="card" id="rs-card"><h2>Para reponer</h2><div id="rs-list"></div></div>
+    <div class="card">
+      <h2>Producto terminado</h2>
+      <p class="mut" style="font-size:12px">Lo que tienes hecho y dónde. Con un <b>mínimo</b>, la app te avisa cuando toca fabricar más. Cambia la cantidad para recontar.</p>
+      <div class="scroll"><table id="fp-table" class="cardok"></table></div>
+    </div>
+  </div>
+  <div class="stk-pane hidden" data-p="loc">
+    <div class="card">
+      <div class="row" style="align-items:center"><h2 style="margin:0">Ubicaciones</h2><div></div>
+        <button class="btn sec sm" style="flex:0 0 auto" onclick="locLabels()">Etiquetas QR</button>
+        <button class="btn sm" style="flex:0 0 auto" onclick="locEdit()">+ Nueva ubicación</button></div>
+      <p class="mut" style="font-size:12px">Estanterías, cajoneras, cajas… unas dentro de otras. Pega su etiqueta QR: al escanearla con el móvil ves qué hay dentro y puedes recontar en el momento.</p>
+      <div id="lc-tree"></div>
+    </div>
+  </div>
+  <div class="stk-pane hidden" data-p="buy">
+  <div class="card" id="shop-card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Lista de la compra</h2><div></div>
+      <button class="btn sec sm" style="flex:0 0 auto" onclick="shopCopy()">Copiar lista</button>
+      <button class="btn sm" style="flex:0 0 auto" onclick="shopEdit()">+ Añadir</button></div>
+    <div id="shop-sugg"></div>
+    <div class="scroll"><table id="shop-table"></table></div>
+    <div id="shop-total" class="mut" style="text-align:right;margin-top:8px;font-size:13px"></div>
+    <details style="margin-top:8px"><summary class="mut" style="cursor:pointer;font-size:13px">Comprado hace poco</summary><div class="scroll"><table id="shop-done"></table></div></details>
+  </div>
+  </div>
+</section>
+
+<section id="v-cat" class="hidden">
+  <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0">Productos</h2><div></div><button class="btn sec" onclick="newKit()">+ Nuevo conjunto</button><button class="btn sec" onclick="recalcAll()">Recalcular todos los precios</button></div><p class="mut" style="font-size:13px">Piezas que vendéis a menudo. Cárgalas en la calculadora para recalcular con los precios actuales o añádelas directas a un pedido. Los <b>conjuntos</b> agrupan varias piezas (p. ej. una granada: cuerpo, tapa, anilla…) con su material extra e instrucciones. Lo marcado como <b>público</b> es lo que aparecerá en la futura tienda online.</p><div class="scroll"><table id="p-table"></table></div></div>
+  <div class="card">
+    <div class="row" style="align-items:center"><h2 style="margin:0">Packs y ofertas</h2><div></div><button class="btn sec" style="flex:0 0 auto" onclick="editOffer()">+ Nueva oferta</button></div>
+    <p class="mut" style="font-size:13px">Se aplican solas al cobrar en un puesto y, en los pedidos, con el botón «Aplicar ofertas». Cada unidad entra como mucho en una oferta.</p>
+    <div class="scroll"><table id="of-table"></table></div>
+  </div>
+</section>
+
+<!-- ============ MANTENIMIENTO ============ -->
+<section id="v-mnt" class="hidden">
+  <div class="card">
+    <h2>Actualizaciones</h2>
+    <p>Versión instalada: <b id="u-ver">–</b> <span class="mut" id="u-prev"></span></p>
+    <div class="row" style="margin-bottom:12px;align-items:end">
+      <div style="flex:0 0 280px"><label>Canal de actualización</label><select id="u-channel" onchange="setChannel(this.value)">
+        <option value="releases">Versiones publicadas (estable, firmadas)</option><option value="main">Rama main (lo último del repo)</option></select></div>
+      <div class="mut" style="font-size:12px" id="u-chan-help"></div>
+    </div>
+    <div id="u-rel" style="margin-bottom:12px"></div>
+    <div id="u-state" class="mut" style="margin-bottom:12px"></div>
+    <div class="row">
+      <div style="flex:2"><label>O sube un paquete a mano (.mtc, .tar o .tar.gz)</label><input type="file" id="u-file" accept=".mtc,.tar,.gz,.tgz,application/x-tar,application/gzip"></div>
+      <div><label>Tu contraseña</label><input type="password" id="u-pw" autocomplete="current-password"></div>
+      <button class="btn" onclick="doUpdate()">Subir y actualizar</button>
+      <button class="btn sec" id="u-rb" onclick="doRollback()">Volver a la anterior</button>
+    </div>
+    <p style="font-size:12px;margin:10px 0 0" id="u-sign"></p>
+    <p class="mut" style="font-size:12px;margin:10px 0 0">Antes de instalar se hace copia de la base de datos. Si la versión nueva no arranca, vuelve sola a la anterior. Los datos no se tocan.</p>
+    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:13px">Historial</summary><pre id="u-hist" style="font-size:12px;white-space:pre-wrap"></pre></details>
+  </div>
+  <div class="card">
+    <h2>Copias de seguridad</h2>
+    <p style="margin-top:0">Se hace una copia automática de la base de datos cada día (se guardan 30) y otra antes de cada actualización, en <code>/var/lib/mitallercito/backups</code> dentro del LXC.</p>
+    <div class="row"><a class="btn" href="/api/backup">Descargar copia de la base de datos</a><a class="btn sec" href="/api/export/movements.csv">Movimientos (CSV)</a><div></div></div>
+    <p class="mut" style="font-size:12px;margin:10px 0 0">Los archivos de los pedidos (STL/3MF) están en <code>/var/lib/mitallercito/files</code>: para tenerlos a salvo, incluye el LXC en los backups de Proxmox.</p>
+  </div>
+</section>
+
+<!-- ============ AJUSTES ============ -->
+<section id="v-cfg" class="hidden">
+  <div class="card">
+    <h2>Mi cuenta</h2>
+    <div class="row">
+      <div><label>Contraseña actual</label><input type="password" id="me-cur" autocomplete="current-password"></div>
+      <div><label>Nueva (mín. 8)</label><input type="password" id="me-new" autocomplete="new-password"></div>
+      <div><label>Repite la nueva</label><input type="password" id="me-new2" autocomplete="new-password"></div>
+      <button class="btn" onclick="changeMyPw()">Cambiar contraseña</button>
+    </div>
+  </div>
+  <div class="card admin-only">
+    <h2>Usuarios</h2>
+    <p class="mut" style="font-size:12px;margin-top:0"><b>Administrador</b>: todo, incluidos ajustes, impresoras, materiales, marca, usuarios y actualizaciones. <b>Usuario</b>: calculadora, pedidos, contabilidad, extracto, catálogo y stock.</p>
+    <table id="us-table"></table>
+    <div class="row" style="margin-top:10px">
+      <div><label>Nuevo usuario</label><input id="nu-name" autocapitalize="none" autocomplete="off"></div>
+      <div><label>Contraseña (mín. 8)</label><input id="nu-pw" type="password" autocomplete="new-password"></div>
+      <div style="flex:0 0 150px"><label>Rol</label><select id="nu-role"><option value="user">Usuario</option><option value="admin">Administrador</option></select></div>
+      <button class="btn" onclick="addUser()">Crear</button>
+    </div>
+  </div>
+  <div class="admin-only">
+  <div class="card">
+    <h2>Tienda y marca</h2>
+    <div class="grid g3">
+      <div><label>Nombre de la tienda</label><input id="b-name"></div>
+      <div><label>Eslogan</label><input id="b-tag"></div>
+      <div><label>Color principal</label><input id="b-color" type="color" style="height:40px;padding:4px"></div>
+      <div><label>Idioma</label><select data-b="language" data-notr><option value="es">🇪🇸 Español</option><option value="en">🇬🇧 English</option></select></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div><label>Logo (PNG/JPG/WEBP, mejor con fondo transparente)</label>
+        <div class="row"><img id="b-logo-prev" class="thumb hidden" style="flex:0 0 auto"><input type="file" id="b-logo-file" accept="image/png,image/jpeg,image/webp,image/gif"><button class="btn sec sm" onclick="delUpload('logo')">Quitar</button></div></div>
+      <div><label>Favicon (PNG/ICO cuadrado; si no hay, se usa el logo)</label>
+        <div class="row"><img id="b-fav-prev" class="thumb hidden" style="flex:0 0 auto"><input type="file" id="b-fav-file" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/webp"><button class="btn sec sm" onclick="delUpload('favicon')">Quitar</button></div></div>
+    </div>
+    <h3 style="font-size:13px;margin:16px 0 6px" class="mut">Datos para presupuestos y albaranes</h3>
+    <div class="grid g3">
+      <div><label>Nombre / razón social</label><input data-b="business_name"></div>
+      <div><label>NIF</label><input data-b="business_nif"></div>
+      <div><label>Dirección</label><input data-b="business_address"></div>
+      <div><label>Email</label><input data-b="business_email"></div>
+      <div><label>Teléfono</label><input data-b="business_phone"></div>
+      <div><label>Web / Instagram</label><input data-b="business_web"></div>
+      <div style="grid-column:span 2"><label>Pie de los documentos</label><input data-b="doc_footer"></div>
+      <div><label>Validez presupuestos (días)</label><input data-b="quote_validity_days" type="number"></div>
+    </div>
+    <h3 style="font-size:13px;margin:16px 0 6px" class="mut">Tienda online (preparado para el futuro)</h3>
+    <label class="switch"><input type="checkbox" id="b-store"> Publicar el catálogo público en <code>/api/public/catalog</code></label>
+    <button class="btn" style="margin-top:12px" onclick="saveBrand()">Guardar marca</button>
+  </div>
+  <div class="card">
+    <h2>Avisos por Telegram</h2>
+    <p class="mut" style="font-size:12px;margin-top:0">1) Crea un bot con <b>@BotFather</b> y copia el token. 2) Escríbele <code>/start</code> (o añádelo a vuestro grupo). 3) Pulsa «Buscar mi chat». Se revisa cada 10 minutos.</p>
+    <div class="grid g3">
+      <div><label class="switch" style="margin-top:22px"><input type="checkbox" id="tg-on"> Avisos activados</label></div>
+      <div><label>Token del bot</label><input id="tg-token" type="password" autocomplete="off" placeholder="123456:ABC…"></div>
+      <div><label>Chat</label><div class="row"><div><input id="tg-chat" placeholder="id del chat"></div><button class="btn sec sm" onclick="tgChats()">Buscar mi chat</button></div></div>
+      <div style="grid-column:span 2"><label>Dirección de la web (para los enlaces de los avisos)</label><input id="tg-url" placeholder="https://taller.midominio.com"></div>
+      <div><label>Recordar cada (horas)</label><input id="tg-remind" type="number"></div>
+    </div>
+    <h3 style="font-size:13px;margin:14px 0 6px" class="mut">Avisar si un pedido lleva más de… (horas) en el estado</h3>
+    <div class="grid g4" id="tg-limits"></div><p class="mut" id="tg-run" style="font-size:13px;margin-top:10px"></p>
+    <div class="row" style="margin-top:10px">
+      <label class="switch"><input type="checkbox" id="tg-new"> Pedido nuevo</label>
+      <label class="switch"><input type="checkbox" id="tg-due"> Entrega hoy/mañana o pasada</label>
+      <label class="switch"><input type="checkbox" id="tg-low"> Stock bajo</label>
+      <label class="switch"><input type="checkbox" id="tg-maint"> Mantenimiento de impresoras</label>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="saveTelegram()">Guardar avisos</button><button class="btn sec" onclick="tgTest()">Enviar prueba</button><div></div></div>
+  </div>
+  <div class="card">
+    <h2>Manyfold</h2>
+    <p class="mut" style="font-size:12px;margin-top:0">Para buscar modelos de tu biblioteca y traer sus archivos a pedidos y productos. Habla <b>el servidor</b> con Manyfold: el navegador y los clientes nunca lo ven. En Manyfold abre <code>/oauth/applications</code>, crea una aplicación con permiso <b>read</b> y copia su ID y su secreto. Sin credenciales solo se ven los modelos públicos.</p>
+    <div class="grid g3">
+      <div><label>Dirección de Manyfold</label><input id="mf-url" placeholder="http://192.168.1.20:3214"></div>
+      <div><label>Client ID</label><input id="mf-id" autocomplete="off"></div>
+      <div><label>Client secret</label><input id="mf-secret" type="password" autocomplete="off"></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center"><button class="btn" style="flex:0 0 auto" onclick="saveManyfold()">Guardar</button><button class="btn sec" style="flex:0 0 auto" onclick="testManyfold()">Probar</button><span id="mf-res" style="font-size:13px"></span></div>
+  </div>
+  <div class="card">
+    <h2>Costes generales</h2>
+    <div class="grid g4" id="s-form"></div>
+    <div class="grid g3" style="margin-top:12px">
+      <div><label>Personas (separadas por coma)</label><input id="s-people"></div>
+      <div><label>Canales de venta</label><input id="s-channels"></div>
+      <div><label>Categorías de gasto</label><input id="s-cats"></div>
+    </div>
+    <button class="btn" style="margin-top:12px" onclick="saveSettings()">Guardar ajustes</button>
+  </div>
+  <div class="card"><h2>Impresoras</h2>
+    <p class="mut" style="font-size:12px;margin-top:0"><b>Conexión</b>: elige Moonraker (Klipper) y pon la <b>IP o nombre</b> de esa impresora (puerto 7125 por defecto, o <code>ip:puerto</code>). La API key solo si Moonraker la pide. Sin conexión, la impresora sirve igual para calcular precios.</p>
+    <div class="scroll"><table id="pr-table"></table></div></div>
+  <div class="card">
+    <h2>Puentes (impresoras en otra red)</h2>
+    <p class="mut" style="font-size:12px;margin-top:0">Si las impresoras están en otra red que este servidor (otra casa, otro taller), instala un <b>puente</b> en un equipo de esa red (Raspberry Pi, NAS, mini PC). El puente se conecta hacia esta web, así que no hace falta VPN. Luego, en la impresora, elige Conexión «Puente», el puente y su IP local.</p>
+    <table id="br-table"></table>
+    <div class="row" style="margin-top:10px"><div><label>Nombre del puente</label><input id="br-name" placeholder="p.ej. Casa / Taller"></div><button class="btn" onclick="addBridge()">Crear puente</button><div></div></div>
+    <div id="br-new" class="hidden" style="margin-top:12px"></div>
+  </div>
+  <div class="card"><h2>Materiales</h2><p class="mut" style="font-size:12px">Precio del envase y cantidad que trae (g para filamento, ml para resina). «Aviso» = cantidad por debajo de la cual sale la alerta de stock bajo.</p><table id="mt-table"></table></div>
+  </div>
+</section>
+
+</main>
+<footer class="appfoot">Hecho con <a href="https://github.com/Oda615/MiTallercito" target="_blank" rel="noopener"><b>MiTallercito</b></a> <span id="ver2"></span></footer>
+</div>
+</div>
+
+<!-- Diálogo pedido -->
+<datalist id="cl-list"></datalist>
+<dialog id="kdlg" class="kdlg">
+  <div class="k-in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg><input id="k-q" autocomplete="off" placeholder="Busca pedidos, clientes, productos, bobinas… o escribe una acción"><kbd>Esc</kbd></div>
+  <div id="k-res" class="k-res"></div>
+  <div class="k-foot mut">↑↓ moverse · Enter abrir · Esc cerrar</div>
+</dialog>
+<datalist id="sup-list"></datalist>
+<dialog id="ldlg" style="width:min(640px,96vw)">
+  <div class="row" style="align-items:center;margin-bottom:6px"><h2 style="margin:0" id="ld-title"></h2><div></div>
+    <button class="btn sec sm" style="flex:0 0 auto" onclick="locEdit(LOC.id)">Editar</button>
+    <a class="btn sec sm" style="flex:0 0 auto" id="ld-qr" target="_blank">QR</a></div>
+  <div class="mut" style="font-size:13px" id="ld-path"></div>
+  <div id="ld-body" style="margin-top:10px"></div>
+  <div class="row" style="margin-top:14px"><div></div><button class="btn" onclick="ldlg.close()">Cerrar</button></div>
+</dialog>
+<dialog id="ndlg" style="width:min(720px,96vw)">
+  <h2 style="margin-top:0" id="nd-title">¿Qué me falta?</h2>
+  <div class="row" style="align-items:end"><div style="flex:0 0 120px"><label>Unidades</label><input id="nd-qty" type="number" min="1" value="1" oninput="needsLoad()"></div>
+    <div id="nd-var-w" class="hidden"><label>Variante</label><select id="nd-var" onchange="needsLoad()"></select></div><div></div></div>
+  <div id="nd-body" style="margin-top:12px"></div>
+  <div class="row" style="margin-top:14px"><button class="btn sec" onclick="ndlg.close()">Cerrar</button><div></div>
+    <button class="btn sec" id="nd-shop" onclick="needsShop()">Añadir lo que falta a la compra</button>
+    <button class="btn" onclick="needsMake()">Fabricar</button></div>
+</dialog>
+<datalist id="comp-list"></datalist>
+<datalist id="loc-list"></datalist>
+<datalist id="comp-cats"></datalist>
+<dialog id="uidlg" style="width:min(480px,96vw)">
+  <form method="dialog" id="ui-form">
+    <h2 style="margin-top:0" id="ui-title"></h2>
+    <div id="ui-msg" class="ui-msg"></div>
+    <div id="ui-fields" class="ui-fields"></div>
+    <div class="ui-acts"><button type="button" class="btn sec ui-x hidden" id="ui-extra"></button><button type="button" class="btn sec" id="ui-cancel">Cancelar</button><button type="submit" class="btn" id="ui-ok">Aceptar</button></div>
+  </form>
+</dialog>
+<dialog id="chdlg" style="width:min(460px,96vw)">
+  <h2 style="margin-top:0" id="ch-title">Elige</h2>
+  <div id="ch-opts" class="choose"></div>
+  <div class="row" style="margin-top:12px"><div></div><button class="btn sec" style="flex:0 0 auto" onclick="chdlg.close()">Cancelar</button></div>
+</dialog>
+<dialog id="odlg" style="width:min(560px,96vw)">
+  <h2 style="margin-top:0">Oferta</h2>
+  <div class="grid g2">
+    <div style="grid-column:span 2"><label>Nombre</label><input id="of-name" placeholder="Llaveros, Black Friday…"></div>
+    <div><label>Tipo</label><select id="of-kind" onchange="ofKind()"><option value="pack">Pack: N unidades por X €</option><option value="nth">La N-ésima con descuento</option><option value="pct">Descuento %</option></select></div>
+    <div id="of-qw"><label id="of-ql">Unidades</label><input id="of-qty" type="number" min="2"></div>
+    <div id="of-pw"><label>Precio del pack €</label><input id="of-price" type="number" step="0.01"></div>
+    <div id="of-cw"><label id="of-cl">Descuento %</label><input id="of-pct" type="number" min="1" max="100"></div>
+    <div><label>Se aplica a</label><select id="of-scope" onchange="ofKind()"><option value="all">Todo el catálogo</option><option value="cat">Una categoría</option><option value="prod">Un producto</option></select></div>
+    <div id="of-catw"><label>Categoría</label><input id="of-cat" list="p-cats2"><datalist id="p-cats2"></datalist></div>
+    <div id="of-prodw"><label>Producto</label><select id="of-prod"></select></div>
+    <div><label>Dónde</label><select id="of-where"><option value="todo">Puestos y pedidos</option><option value="puesto">Solo en puestos</option><option value="pedidos">Solo en pedidos</option></select></div>
+    <div><label class="switch" style="margin-top:22px"><input type="checkbox" id="of-on"> Activa</label></div>
+  </div>
+  <p class="mut" id="of-eg" style="font-size:13px"></p>
+  <div class="row" style="margin-top:12px"><button class="btn sec" id="of-del" style="flex:0 0 auto" onclick="delOffer()">Borrar</button><div></div>
+    <button class="btn sec" style="flex:0 0 auto" onclick="odlg.close()">Cancelar</button><button class="btn" style="flex:0 0 auto" onclick="saveOffer()">Guardar</button></div>
+</dialog>
+<dialog id="mfdlg" style="width:min(640px,96vw)">
+  <h2 style="margin-top:0">Traer de Manyfold</h2>
+  <div class="row"><div><input id="mf-q" placeholder="Buscar modelo…" onkeydown="if(event.key==='Enter')mfSearch()"></div><button class="btn" style="flex:0 0 auto" onclick="mfSearch()">Buscar</button></div>
+  <div id="mf-list" style="margin-top:10px;max-height:50vh;overflow:auto"></div>
+  <div class="row" style="margin-top:12px"><div></div><button class="btn sec" style="flex:0 0 auto" onclick="mfdlg.close()">Cerrar</button>
+    <button class="btn hidden" id="mf-go" style="flex:0 0 auto" onclick="mfImport()">Traer los marcados</button></div>
+</dialog>
+<dialog id="sqdlg" style="width:min(420px,96vw)">
+  <h2 style="margin-top:0" id="sq-title">Bobina</h2>
+  <div id="sq-body"></div>
+  <div class="grid g2" style="margin-top:14px;gap:8px">
+    <button class="btn" onclick="sqdlg.close();weighSpool(SQ.id)">Pesar</button>
+    <button class="btn sec" onclick="sqdlg.close();askFinish(SQ.id)">Gastada / borrar</button>
+    <button class="btn sec" onclick="sqdlg.close();editSpool(SQ.id)">Editar</button>
+    <button class="btn sec" onclick="sqdlg.close();show('stk')">Ir al almacén</button>
+  </div>
+</dialog>
+<dialog id="cdlg">
+  <h2 style="margin-top:0" id="cl-title">Cliente</h2>
+  <div class="grid g3">
+    <div><label>Nombre</label><input id="cl-name"></div>
+    <div><label>Teléfono / contacto</label><input id="cl-phone"></div>
+    <div><label>Email</label><input id="cl-email" type="email"></div>
+  </div>
+  <div style="margin-top:10px"><label>Dirección</label><input id="cl-address"></div>
+  <div style="margin-top:10px"><label>Notas</label><textarea id="cl-notes" rows="2" placeholder="prefiere PETG, viene los sábados…"></textarea></div>
+  <div class="grid g4" id="cl-stats" style="margin-top:12px"></div>
+  <h3 style="font-size:14px;margin:16px 0 6px">Pedidos</h3><div class="scroll"><table id="cl-hist"></table></div>
+  <div class="row" style="margin-top:16px">
+    <button class="btn sec admin-only" id="cl-del" onclick="delClient()">Borrar ficha</button><div></div>
+    <button class="btn sec" id="cl-new" onclick="clientNewOrder()">Nuevo pedido</button>
+    <button class="btn sec" id="cl-rep" onclick="clientRepeat()">Repetir el último</button>
+    <button class="btn sec" onclick="cdlg.close()">Cerrar</button><button class="btn" onclick="saveClient()">Guardar</button></div>
+</dialog>
+<dialog id="mdlg">
+  <h2 style="margin-top:0" id="mt-title">Tarea de mantenimiento</h2>
+  <div><label>Tarea</label><input id="mt-name" placeholder="Engrasar husillos"></div>
+  <p class="mut" style="font-size:12px">Avisa con lo que llegue antes. Deja vacío lo que no uses.</p>
+  <div class="grid g3">
+    <div><label>Cada (horas de impresión)</label><input id="mt-h" type="number" min="0"></div>
+    <div><label>Cada (impresiones)</label><input id="mt-n" type="number" min="0"></div>
+    <div><label>Cada (días)</label><input id="mt-d" type="number" min="0"></div>
+  </div>
+  <div class="grid g2" style="margin-top:10px">
+    <div><label>Hecho por última vez</label><input id="mt-last" type="date"></div>
+    <div><label>Notas</label><input id="mt-notes"></div>
+  </div>
+  <div class="row" style="margin-top:16px"><button class="btn sec" id="mt-del" onclick="delTask()">Borrar</button><div></div>
+    <button class="btn sec" onclick="mdlg.close()">Cancelar</button><button class="btn" onclick="saveTask()">Guardar</button></div>
+</dialog>
+<dialog id="dlg">
+  <h2 style="margin-top:0" id="d-title">Pedido</h2>
+  <div class="grid g3">
+    <div><label>Cliente</label><input id="d-client" list="cl-list" autocomplete="off"></div>
+    <div><label>Contacto</label><input id="d-contact" placeholder="tel, @insta, email…"></div>
+    <div><label>Canal</label><select id="d-channel"></select></div>
+    <div><label>Estado</label><select id="d-status"></select></div>
+    <div><label>Fecha entrega</label><input id="d-due" type="date"></div>
+    <div><label>Lo lleva</label><select id="d-assigned"></select></div>
+    <div><label>Email</label><input id="d-email" type="email"></div>
+    <div><label>Dirección de envío</label><input id="d-address"></div>
+    <div><label>Origen</label><select id="d-source"><option value="interno">Interno</option><option value="web">Tienda online</option><option value="puesto">Puesto / en mano</option><option value="stock">Para stock</option></select></div>
+  </div>
+  <h3 style="font-size:14px;margin:16px 0 6px">Líneas</h3>
+  <table id="d-items"></table>
+  <div class="row" style="margin-top:6px">
+    <button class="btn sec sm" onclick="addItemRow()">+ línea manual</button>
+    <select id="d-prod" style="max-width:260px"><option value="">+ desde catálogo…</option></select>
+    <button class="btn sec sm" onclick="applyOrderOffers()">Aplicar ofertas</button>
+  </div>
+  <div class="grid g4" style="margin-top:12px">
+    <div><label>Envío €</label><input id="d-ship" type="number" step="0.01" oninput="dlgTotals()"></div>
+    <div><label>Descuento €</label><input id="d-disc" type="number" step="0.01" oninput="dlgTotals()"></div>
+    <div><label>Total</label><div class="big" style="font-size:24px" id="d-total">0,00 €</div></div>
+    <div><label>Beneficio estimado</label><div class="big pos" style="font-size:24px" id="d-profit">0,00 €</div></div>
+  </div>
+  <div class="grid g3" style="margin-top:12px">
+    <div><label>Cobrado</label><select id="d-paid"><option value="0">No</option><option value="1">Sí</option></select></div>
+    <div><label>Cobró</label><select id="d-paidto"></select></div>
+    <div><label>Fecha cobro</label><input id="d-paiddate" type="date"></div>
+  </div>
+  <h3 style="font-size:14px;margin:16px 0 6px">Archivos <span class="mut" style="font-weight:400;font-size:12px">— STL, 3MF del proyecto laminado, G-code… para poder repetirlo igual</span></h3>
+  <div id="d-files"></div>
+  <div class="row" style="margin-top:6px"><button class="btn sec sm mf-only" style="flex:0 0 auto" onclick="curOrder.id ? openManyfold({order_id:curOrder.id}) : toast('Guarda el pedido primero')">Traer de Manyfold</button><div><input type="file" id="d-file" multiple accept=".stl,.3mf,.obj,.step,.stp,.gcode,.gco,.bgcode,.pwmx,.pwma,.pm3,.ctb,.zip,.f3d,.scad"></div></div>
+  <div id="d-extra"></div>
+  <label style="margin-top:12px">Notas</label><textarea id="d-notes" placeholder="colores, medidas, enlace al modelo…"></textarea>
+  <div class="row" style="margin-top:14px">
+    <button class="btn bad sm" id="d-del" onclick="delOrder()">Borrar</button>
+    <button class="btn sec sm" id="d-repeat" onclick="repeatOrder()">Repetir pedido</button>
+    <button class="btn sec sm" onclick="printOrder('presupuesto')">Presupuesto PDF</button>
+    <button class="btn sec sm" onclick="printOrder('albaran')">Albarán PDF</button><div></div>
+    <button class="btn sec" onclick="dlg.close()">Cancelar</button>
+    <button class="btn" onclick="saveOrder()">Guardar</button>
+  </div>
+</dialog>
+
+<dialog id="pdlg">
+  <h2 style="margin-top:0">Producto</h2>
+  <div class="grid g3">
+    <div style="grid-column:span 2"><label>Nombre</label><input id="p-name"></div>
+    <div><label>Referencia (SKU)</label><input id="p-sku"></div>
+    <div><label>Categoría</label><input id="p-cat" list="p-cats"><datalist id="p-cats"></datalist></div>
+    <div><label>Precio interno €</label><input id="p-price" type="number" step="0.01"></div>
+    <div><label>Coste €</label><input id="p-cost" type="number" step="0.01"></div>
+    <div><label>Precio público € (vacío = interno)</label><input id="p-pprice" type="number" step="0.01"></div>
+    <div><label>Stock (vacío = bajo pedido)</label><input id="p-stock" type="number" min="0"></div>
+    <div><label>Días de fabricación</label><input id="p-lead" type="number" min="0"></div>
+    <div><label>Stock mínimo (avisa para reponer)</label><input id="p-min" type="number" min="0" placeholder="0 = sin aviso"></div>
+    <div><label>Dónde se guarda</label><select id="p-loc"></select></div>
+  </div>
+  <label style="margin-top:12px">Descripción (la verá el cliente)</label><textarea id="p-desc"></textarea>
+  <label style="margin-top:12px">Notas internas</label><input id="p-notes">
+  <div class="recipe">
+    <div class="row" style="align-items:center"><h3 style="font-size:15px;margin:0">Receta</h3><div></div>
+      <button class="btn sec sm" style="flex:0 0 auto" onclick="openNeeds(curProd.id)">¿Qué me falta?</button></div>
+    <div id="p-kit" class="hidden">
+      <h3 class="rh">Piezas impresas</h3>
+      <table id="pk-items"></table>
+      <div class="row" style="margin-top:6px"><select id="pk-add" style="max-width:320px"></select><div></div></div>
+    </div>
+    <h3 class="rh">Componentes y material extra <span class="mut" style="font-weight:400;font-size:12px">— muelles, tornillos, imanes, pintura… por unidad</span></h3>
+    <table id="pk-parts"></table>
+    <button class="btn sec sm" style="margin-top:6px" onclick="pkPart()">+ componente</button>
+    <div class="row" style="margin-top:10px;align-items:center"><div id="pk-sum" style="font-size:13px"></div><button class="btn sec sm" id="pk-sugg" onclick="pkUseSuggested()">Usar precio sugerido</button></div>
+    <label style="margin-top:12px">Pasos de montaje (pintura, consejos…)</label><textarea id="p-instr" style="min-height:100px" placeholder="1. Pon los insertos con el soldador a 220 °C…"></textarea>
+    <div class="hint">Las fotos de los pasos súbelas en «Archivos del modelo»: se ven aquí debajo y van en el .zip.</div>
+  </div>
+  <div id="p-var">
+    <h3 style="font-size:14px;margin:14px 0 6px">Variantes <span class="mut" style="font-weight:400;font-size:12px">— colores, tamaños… cada una con su precio y su stock</span></h3>
+    <table id="pv-table"></table>
+    <div class="row" style="margin-top:6px"><button class="btn sec sm" onclick="pvAdd()">+ variante</button><button class="btn sec sm" onclick="pvBulk()">Crear varias de golpe…</button><div></div></div>
+    <p class="mut" style="font-size:12px;margin:4px 0 0">Con variantes, el stock del producto es la suma de las suyas. «Material» cambia el color que se gasta al fabricarla.</p>
+  </div>
+  <div class="row" style="align-items:center;margin:14px 0 6px"><h3 style="font-size:14px;margin:0">Archivos del modelo</h3><div></div>
+    <a class="btn sec sm hidden" id="p-mflink" target="_blank" rel="noopener" style="flex:0 0 auto">Abrir en Manyfold</a>
+    <button class="btn sec sm mf-only" style="flex:0 0 auto" onclick="openManyfold({product_id:curProd.id})">Traer de Manyfold</button></div>
+  <div id="p-files"></div>
+  <input type="file" id="p-mfile" multiple accept="image/*,.pdf,.stl,.3mf,.obj,.step,.stp,.gcode,.gco,.bgcode,.pwmx,.pwma,.pm3,.ctb,.zip,.f3d,.scad" style="margin-top:6px">
+  <div id="p-ficha" class="mut" style="font-size:12px;margin-top:8px"></div>
+  <a class="btn sec sm" id="p-zip" href="#" style="margin-top:10px;display:inline-block">Descargar todo (.zip)</a>
+  <div class="row" style="margin-top:12px">
+    <div style="flex:0 0 auto"><img id="p-img" class="thumb hidden" style="width:72px;height:72px"></div>
+    <div><label>Foto</label><input type="file" id="p-file" accept="image/png,image/jpeg,image/webp"></div>
+    <label class="switch" style="flex:0 0 auto"><input type="checkbox" id="p-public"> Público en tienda</label>
+  </div>
+  <div class="row" style="margin-top:14px"><div></div>
+    <button class="btn sec" onclick="makeStock()">Fabricar para stock</button>
+    <button class="btn sec" onclick="pdlg.close()">Cancelar</button><button class="btn" onclick="saveProd()">Guardar</button></div>
+</dialog>
+
+<dialog id="spdlg" style="width:min(480px,96vw)">
+  <h2 style="margin-top:0" id="sp-title">Bobina</h2>
+  <p style="margin-top:0">Si puedes, <b>pesa la bobina vacía</b>: se guardará para <b id="sp-brand"></b> y la próxima vez sabrás cuánto queda en una bobina de esa marca solo con pesarla.</p>
+  <label>Peso de la bobina vacía (g)</label><input id="sp-empty" type="number" placeholder="p. ej. 180">
+  <div class="row" style="margin-top:14px"><button class="btn sec" onclick="spdlg.close()">Cancelar</button><div></div>
+    <button class="btn sec" onclick="finishSpool(true)">Borrar</button><button class="btn" onclick="finishSpool(false)">Marcar como gastada</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/i18n.js?v=__V__"></script>
+<script src="/static/app.js?v=__V__"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+# Publica una versión al empujar una etiqueta vX.Y.Z (debe coincidir con el fichero VERSION).
+#   git tag v0.7.0 && git push --tags
+# Firma: guarda tu clave privada (ver tools/keygen.sh) como secreto del repo SIGNING_KEY.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest && python -m pytest -q tests
+      - name: La etiqueta coincide con VERSION
+        run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}"
+      - name: Construir paquete firmado
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            umask 077; printf '%s\n' "$SIGNING_KEY" > "$RUNNER_TEMP/signing.key"
+            export MT_SIGNING_KEY="$RUNNER_TEMP/signing.key"
+          else
+            echo "::warning::Sin secreto SIGNING_KEY: el paquete sale SIN firmar"
+          fi
+          python tools/build_release.py
+          rm -f "$RUNNER_TEMP/signing.key"
+          cp tools/mitallercito-lxc.sh dist/mitallercito-lxc.sh   # instalador clásico del host (sin conexión, con --file)
+          (cd dist && sha256sum ./*.mtc mitallercito-lxc.sh | sed 's# \./# #' > SHA256SUMS)
+      - name: Notas de la versión
+        run: |
+          python - <<'PY' > notes.md
+          import re
+          v = open("VERSION").read().strip()
+          txt = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## \[?{re.escape(v)}\]?.*?\n(.*?)(?=^## |\Z)", txt, re.S | re.M)
+          print(m.group(1).strip() if m else f"Versión {v}")
+          PY
+      - name: Crear la versión en GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Si la versión ya la creaste a mano en GitHub (con tus notas), solo se le añaden los archivos
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.mtc dist/mitallercito-lxc.sh dist/SHA256SUMS --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.mtc dist/mitallercito-lxc.sh dist/SHA256SUMS --title "MiTallercito $GITHUB_REF_NAME" --notes-file notes.md
+          fi
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: meta
+        run: echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.meta.outputs.image }}:latest

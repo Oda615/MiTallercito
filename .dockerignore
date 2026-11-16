@@ -1,0 +1,9 @@
+.git
+dist
+data
+tests
+tools
+docs
+bridge
+ct
+**/__pycache__
